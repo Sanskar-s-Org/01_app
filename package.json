@@ -1,0 +1,28 @@
+{
+  "name": "mocha-nyc-sample",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "mocha test/**/*.test.js --timeout 10000 --reporter mocha-junit-reporter --exit",
+    "coverage": "nyc --reporter cobertura --reporter lcov --reporter text --reporter json-summary mocha test/**/*.test.js --timeout 10000 --reporter mocha-junit-reporter --exit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^9.0.0"
+  },
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "mocha": "^11.7.5",
+    "mocha-junit-reporter": "^2.2.1",
+    "mocha-multi-reporters": "^1.5.1",
+    "nyc": "^17.1.0",
+    "supertest": "^7.1.4"
+  }
+}
