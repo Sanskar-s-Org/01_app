@@ -28,7 +28,7 @@ pipeline {
                         --out ./
                         --format ALL
                         --prettyPrint
-                        --disableNvd
+                        --noupdate
                     ''', odcInstallation: 'OWASP-DepCheck-10'
                 }
             }
