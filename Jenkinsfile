@@ -10,5 +10,6 @@ pipeline {
                 sh "node --version"
             }
         }
+    }
         
 }
