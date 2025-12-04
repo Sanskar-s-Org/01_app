@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Build') {
+        stage('BuildNew') {
             steps {
                 echo 'Building...'
                 // Add your build steps here, e.g., sh 'mvn clean install'
@@ -10,7 +10,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                echo 'Testing...'
+                echo 'Testing..'
                 // Add your test steps here, e.g., sh 'mvn test'
             }
         }
