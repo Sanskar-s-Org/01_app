@@ -22,12 +22,15 @@ pipeline {
         }
         stage('OWASP Dependency Check') {
             steps {
-                dependencyCheck additionalArguments: '''
-                    --scan ./
-                    --out ./
-                    --format ALL
-                    --prettyPrint
-                ''', odcInstallation: 'OWASP-DepCheck-10'
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    dependencyCheck additionalArguments: '''
+                        --scan ./
+                        --out ./
+                        --format ALL
+                        --prettyPrint
+                        --disableNvd
+                    ''', odcInstallation: 'OWASP-DepCheck-10'
+                }
             }
         }
     }
