@@ -1,7 +1,6 @@
 pipeline {
     agent any
-    tools
-    {
+    tools {
         nodejs 'nodejs-22-6-0'
     }
     stages {
@@ -15,23 +14,53 @@ pipeline {
                 sh "npm install --no-audit"
             }
         }
-        parallel {
-            stage('NPM Dependencies Audit') {
-                steps {
-                    sh "npm audit --audit-level=critical"
+        stage('Security Checks') {
+            parallel {
+                stage('NPM Dependencies Audit') {
+                    steps {
+                        sh "npm audit --audit-level=critical"
+                    }
                 }
-            }
-            stage('OWASP Dependency Check') {
-                steps {
+                stage('OWASP Dependency Check') {
+                    steps {
                         dependencyCheck additionalArguments: '''
                             --scan \'./\'
                             --out \'./\'
                             --format \'ALL\'
                             --prettyPrint''', odcInstallation: 'OWASP-DepCheck-10'
                         dependencyCheckPublisher failedTotalCritical: 1, pattern: 'dependency-check-report.xml', stopBuild: true
+                        junit allowEmptyResults: true, stdioRetention: '', testResults: 'dependency-check-junit.xml'
+                        publishHTML([allowMissing: false,
+                            alwaysLinkToLastBuild: false,
+                            keepAll: true,
+                            reportDir: '.',
+                            reportFiles: 'dependency-check-report.html',
+                            reportName: 'OWASP Dependency Check Report'])
+                    }
                 }
             }
         }
+        stage('Unit Tests') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'mongoCreds', passwordVariable: 'MONGODB_PASS', usernameVariable: 'MONGODB_USER')]) {
+                    sh "npm test"
+                }
+            }
+        }
+        stage('Code Coverage') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'mongoCreds', passwordVariable: 'MONGODB_PASS', usernameVariable: 'MONGODB_USER')]) {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE', message: 'Coverage below threshold') {
+                        sh "npm run coverage"
+                    }
+                }
+                publishHTML([allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'coverage/lcov-report',
+                    reportFiles: 'index.html',
+                    reportName: 'Code Coverage Report', reportTitles:'', useWrapperFileDirectly: true])
+            }
+        }
     }
-        
 }
