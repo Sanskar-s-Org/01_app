@@ -40,7 +40,7 @@ pipeline {
                 --prettyPrint
                 --nvdApiKey ${NVD_API_KEY}
             """,
-            odcInstallation: 'OWASP-DepCheck-9'
+            odcInstallation: 'OWASP-DepCheck-10'
 
             dependencyCheckPublisher(
                 failedTotalCritical: 1,
