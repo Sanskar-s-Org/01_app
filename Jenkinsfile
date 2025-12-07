@@ -30,34 +30,42 @@ pipeline {
                     }
                 }
                 stage('OWASP Dependency Check') {
-                    environment {
-                        NVD_API_KEY = credentials('nvd-api-key')
-                    }
                     steps {
-                        dependencyCheck(
-                            additionalArguments: "--scan ./ --out ./ --format ALL --prettyPrint --nvdApiKey ${env.NVD_API_KEY}",
-                            odcInstallation: 'OWASP-DepCheck-9'
-                        )
+                        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                            // Write API key to a properties file
+                            sh '''
+                                echo "nvdApiKey=${NVD_API_KEY}" > dependency-check.properties
+                                echo "nvdApiDelay=8000" >> dependency-check.properties
+                            '''
+                            
+                            dependencyCheck(
+                                additionalArguments: '--scan ./ --out ./ --format ALL --prettyPrint --propertyfile dependency-check.properties',
+                                odcInstallation: 'OWASP-DepCheck-9'
+                            )
 
-                        dependencyCheckPublisher(
-                            failedTotalCritical: 1,
-                            pattern: 'dependency-check-report.xml',
-                            stopBuild: true
-                        )
+                            // Clean up the properties file
+                            sh 'rm -f dependency-check.properties'
 
-                        junit(
-                            allowEmptyResults: true,
-                            testResults: 'dependency-check-junit.xml'
-                        )
+                            dependencyCheckPublisher(
+                                failedTotalCritical: 1,
+                                pattern: 'dependency-check-report.xml',
+                                stopBuild: true
+                            )
 
-                        publishHTML([
-                            allowMissing: true,
-                            alwaysLinkToLastBuild: false,
-                            keepAll: true,
-                            reportDir: '.',
-                            reportFiles: 'dependency-check-report.html',
-                            reportName: 'OWASP Dependency Check Report'
-                        ])
+                            junit(
+                                allowEmptyResults: true,
+                                testResults: 'dependency-check-junit.xml'
+                            )
+
+                            publishHTML([
+                                allowMissing: true,
+                                alwaysLinkToLastBuild: false,
+                                keepAll: true,
+                                reportDir: '.',
+                                reportFiles: 'dependency-check-report.html',
+                                reportName: 'OWASP Dependency Check Report'
+                            ])
+                        }
                     }
                 }
             }
