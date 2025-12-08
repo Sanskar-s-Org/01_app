@@ -3,10 +3,10 @@ pipeline {
 
     tools {
         nodejs 'nodejs-22-6-0'
-        dockerTool 'docker-latest'
     }
     environment{
         SONAR_SCANNER_HOME = tool 'sonarqube-scanner-6.1.0'
+        DOCKER_IMAGE = "immsanskarjoshi/test-repo"
     }
     stages {
 
@@ -122,7 +122,7 @@ pipeline {
         stage('SAST - SonarQube') {
             steps {
                 sh '''
-                     $SONAR_SCANNER_HOME/bin/sonar-scanner \
+                    $SONAR_SCANNER_HOME/bin/sonar-scanner \
                     -Dsonar.projectKey=01TestApp \
                     -Dsonar.sources=. \
                     -Dsonar.host.url=http://3.110.130.196:9000 \
@@ -133,8 +133,14 @@ pipeline {
         }
         stage('Build Docker Image'){
             steps{
-                sh 'printenv'
-                sh 'docker build -t immsanskarjoshi/test-repo:$GIT_COMMIT .'
+                script {
+                    def dockerHome = tool name: 'docker-latest', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
+                    env.PATH = "${dockerHome}/bin:${env.PATH}"
+                    
+                    sh "docker --version"
+                    sh "docker build -t ${DOCKER_IMAGE}:${GIT_COMMIT} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${GIT_COMMIT} ${DOCKER_IMAGE}:latest"
+                }
             }
         }
     }
