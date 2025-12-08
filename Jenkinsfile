@@ -186,7 +186,8 @@ pipeline {
         }
         stage('Deploy AWS EC2'){
             steps{
-                withCredentials([
+                script{
+                    withCredentials([
                     usernamePassword(
                         credentialsId: 'mongoCreds',
                         usernameVariable: 'MONGODB_USER',
@@ -204,6 +205,7 @@ pipeline {
                             sudo docker run --name sample-app \
                                 -p 3000:3000 -d ${DOCKER_IMAGE}:${GIT_COMMIT}
                     '''
+                }
                 }
                 }
             }
