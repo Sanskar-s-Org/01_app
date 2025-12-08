@@ -101,9 +101,7 @@ pipeline {
                         passwordVariable: 'MONGODB_PASS'
                     )
                 ]) {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE', message: 'Coverage below threshold') {
-                        sh "npm run coverage"
-                    }
+                    sh "npm run coverage"
                 }
 
                 publishHTML([
