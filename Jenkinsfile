@@ -162,7 +162,7 @@ pipeline {
                                     -w /workspace \
                                     aquasec/trivy:latest convert \
                                     --format template \
-                                    --template "@contrib/html.tpl" \
+                                    --template /contrib/html.tpl \
                                     --output /workspace/trivy-image-MEDIUM-results.html \
                                     /workspace/trivy-image-MEDIUM-results.json
                                 
@@ -172,7 +172,7 @@ pipeline {
                                     -w /workspace \
                                     aquasec/trivy:latest convert \
                                     --format template \
-                                    --template "@contrib/html.tpl" \
+                                    --template /contrib/html.tpl \
                                     --output /workspace/trivy-image-CRITICAL-results.html \
                                     /workspace/trivy-image-CRITICAL-results.json
                                 
@@ -183,8 +183,8 @@ pipeline {
                                 trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --format json --output trivy-image-MEDIUM-results.json 
                                 trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 0 --format json --output trivy-image-CRITICAL-results.json 
                                 
-                                trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json
-                                trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
+                                trivy convert --format template --template /contrib/html.tpl --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json
+                                trivy convert --format template --template /contrib/html.tpl --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
                             fi
                         '''
                     } catch (Exception e) {
