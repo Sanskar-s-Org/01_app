@@ -10,7 +10,25 @@ describe('Items API Integration Tests', () => {
     before(async () => {
         // Connect to a test database or ensure connection is open
         if (mongoose.connection.readyState === 0) {
-            await mongoose.connect(process.env.MONGODB_URI);
+            const user = process.env.MONGODB_USER;
+            const pass = process.env.MONGODB_PASS;
+            
+            let uri = "";
+            
+            if (user && pass) {
+                // Use MongoDB Atlas connection string format
+                const atlasCluster = process.env.MONGODB_ATLAS_CLUSTER || "testdb.bhlsic4.mongodb.net";
+                const appName = process.env.MONGODB_APP_NAME || "testDB";
+                uri = `mongodb+srv://${user}:${encodeURIComponent(pass)}@${atlasCluster}/?appName=${appName}`;
+            } else {
+                // Fallback to local MongoDB if no credentials provided
+                const host = process.env.MONGODB_HOST || "localhost";
+                const port = process.env.MONGODB_PORT || "27017";
+                const dbname = process.env.MONGODB_DBNAME || "test";
+                uri = `mongodb://${host}:${port}/${dbname}`;
+            }
+            
+            await mongoose.connect(uri);
         }
     });
 
