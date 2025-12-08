@@ -130,44 +130,50 @@ pipeline {
                         sh '''
                             echo "Running Trivy security scan..."
                             
-                            # Scan with MEDIUM severity using table format and save to file
+                            # Scan with MEDIUM severity using HTML template
                             docker run --rm \
                                 -v /var/run/docker.sock:/var/run/docker.sock \
                                 aquasec/trivy:latest image \
                                 --severity LOW,MEDIUM \
                                 --exit-code 0 \
-                                --format table \
-                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-MEDIUM-results.txt
+                                --format template \
+                                --template "@contrib/html.tpl" \
+                                -o trivy-image-MEDIUM-report.html \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT}
                             
-                            # Scan with CRITICAL severity using table format and save to file
+                            # Copy the HTML report to workspace
                             docker run --rm \
                                 -v /var/run/docker.sock:/var/run/docker.sock \
-                                aquasec/trivy:latest image \
-                                --severity HIGH,CRITICAL \
-                                --exit-code 0 \
-                                --format table \
-                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-CRITICAL-results.txt
-                            
-                            # Generate JSON reports
-                            docker run --rm \
-                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                -v $(pwd):/output \
                                 aquasec/trivy:latest image \
                                 --severity LOW,MEDIUM \
                                 --exit-code 0 \
-                                --format json \
-                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-MEDIUM-results.json
+                                --format template \
+                                --template "@contrib/html.tpl" \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-MEDIUM-report.html
                             
+                            # Scan with CRITICAL severity using HTML template
                             docker run --rm \
                                 -v /var/run/docker.sock:/var/run/docker.sock \
                                 aquasec/trivy:latest image \
                                 --severity HIGH,CRITICAL \
                                 --exit-code 0 \
+                                --format template \
+                                --template "@contrib/html.tpl" \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-CRITICAL-report.html
+                            
+                            # Generate JSON reports for archiving
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                aquasec/trivy:latest image \
+                                --severity LOW,MEDIUM,HIGH,CRITICAL \
+                                --exit-code 0 \
                                 --format json \
-                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-CRITICAL-results.json
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-full-results.json
                             
                             echo "Trivy scan completed successfully!"
                             echo "Generated files:"
-                            ls -lah trivy-image-*.txt trivy-image-*.json
+                            ls -lah trivy-image-*.html trivy-image-*.json
                         '''
                     } catch (Exception e) {
                         echo "Trivy scan failed. Skipping."
@@ -203,23 +209,23 @@ pipeline {
                 useWrapperFileDirectly: true
             ])
             
-            // Publish Trivy MEDIUM severity report
+            // Publish Trivy MEDIUM severity HTML report
             publishHTML([
                 allowMissing: true,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
                 reportDir: '.',
-                reportFiles: 'trivy-image-MEDIUM-results.txt',
+                reportFiles: 'trivy-image-MEDIUM-report.html',
                 reportName: 'Trivy MEDIUM Severity Report'
             ])
             
-            // Publish Trivy CRITICAL severity report
+            // Publish Trivy CRITICAL severity HTML report
             publishHTML([
                 allowMissing: true,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
                 reportDir: '.',
-                reportFiles: 'trivy-image-CRITICAL-results.txt',
+                reportFiles: 'trivy-image-CRITICAL-report.html',
                 reportName: 'Trivy CRITICAL Severity Report'
             ])
             
