@@ -59,15 +59,6 @@ pipeline {
                                 allowEmptyResults: true,
                                 testResults: 'dependency-check-junit.xml'
                             )
-
-                            publishHTML([
-                                allowMissing: true,
-                                alwaysLinkToLastBuild: false,
-                                keepAll: true,
-                                reportDir: '.',
-                                reportFiles: 'dependency-check-report.html',
-                                reportName: 'OWASP Dependency Check Report'
-                            ])
                         }
                     }
                 }
@@ -106,16 +97,6 @@ pipeline {
                 ]) {
                     sh "npm run coverage"
                 }
-
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'coverage/lcov-report',
-                    reportFiles: 'index.html',
-                    reportName: 'Code Coverage Report',
-                    useWrapperFileDirectly: true
-                ])
             }
         }
 
@@ -146,7 +127,7 @@ pipeline {
             steps{
                 script {
                     try {
-                        sh """
+                        sh '''
                             # Install Trivy if not already installed
                             if ! command -v trivy &> /dev/null; then
                                 echo "Installing Trivy..."
@@ -163,24 +144,36 @@ pipeline {
                             --format json --o trivy-image-MEDIUM-results.json 
 
                             trivy image {DOCKER_IMAGE}:${GIT_COMMIT} \ 
-                            --severity CRITICAL \ 
+                            --severity HIGH,CRITICAL \ 
                             --exit-code 1 \
                             --quiet \
                             --format json --o trivy-image-CRITICAL-results.json 
-                        """
-                        
-                        publishHTML([
-                            allowMissing: true,
-                            alwaysLinkToLastBuild: true,
-                            keepAll: true,
-                            reportDir: '.',
-                            reportFiles: 'trivy-report.json',
-                            reportName: 'Trivy Security Scan Report'
-                        ])
+                        '''
                     } catch (Exception e) {
                         echo "Trivy scan failed or Docker image not available. Skipping."
                         currentBuild.result = 'UNSTABLE'
                     }
+                }
+            }
+            post{
+                always{
+                    sh '''
+                        trivy convert \ 
+                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
+                        --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json         
+
+                        trivy convert \ 
+                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
+                        --output trivy-image-CRITICAL-results.html trivy-image-MEDIUM-results.json   
+
+                        trivy convert \ 
+                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
+                        --output trivy-image-MEDIUM-results.xml trivy-image-MEDIUM-results.json         
+
+                        trivy convert \ 
+                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
+                        --output trivy-image-CRITICAL-results.xml trivy-image-MEDIUM-results.json         
+                    '''
                 }
             }
         }
@@ -188,7 +181,47 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline finished. Cleaning workspace..."
+            echo "Pipeline finished. Publishing all reports..."
+            
+            // Publish HTML Reports
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'dependency-check-report.html',
+                reportName: 'OWASP Dependency Check Report'
+            ])
+            
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'coverage/lcov-report',
+                reportFiles: 'index.html',
+                reportName: 'Code Coverage Report',
+                useWrapperFileDirectly: true
+            ])
+            
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'trivy-image-MEDIUM-results.html',
+                reportName: 'Trivy Image Scan - MEDIUM'
+            ])
+            
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'trivy-image-CRITICAL-results.html',
+                reportName: 'Trivy Image Scan - CRITICAL'
+            ])
+            
+            echo "All reports published successfully!"
         }
     }
 }
