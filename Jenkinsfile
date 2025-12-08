@@ -121,7 +121,7 @@ pipeline {
         stage('SAST - SonarQube') {
             steps {
                 sh '''
-                    sonar-scanner \
+                     $SONAR_SCANNER_HOME/bin/sonar-scanner \
                     -Dsonar.projectKey=01TestApp \
                     -Dsonar.sources=. \
                     -Dsonar.host.url=http://3.110.130.196:9000 \
