@@ -203,8 +203,28 @@ pipeline {
                 useWrapperFileDirectly: true
             ])
             
-            // Archive Trivy scan results
-            archiveArtifacts artifacts: 'trivy-image-*.txt, trivy-image-*.json', allowEmptyArchive: true
+            // Publish Trivy MEDIUM severity report
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'trivy-image-MEDIUM-results.txt',
+                reportName: 'Trivy MEDIUM Severity Report'
+            ])
+            
+            // Publish Trivy CRITICAL severity report
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'trivy-image-CRITICAL-results.txt',
+                reportName: 'Trivy CRITICAL Severity Report'
+            ])
+            
+            // Archive Trivy JSON results for further processing
+            archiveArtifacts artifacts: 'trivy-image-*.json', allowEmptyArchive: true
             
             echo "All reports published successfully!"
         }
