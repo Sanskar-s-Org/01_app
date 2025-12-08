@@ -134,12 +134,9 @@ pipeline {
         stage('Build Docker Image'){
             steps{
                 script {
-                    def dockerHome = tool name: 'docker-latest', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
-                    env.PATH = "${dockerHome}/bin:${env.PATH}"
-                    
-                    sh "docker --version"
-                    sh "docker build -t ${DOCKER_IMAGE}:${GIT_COMMIT} ."
-                    sh "docker tag ${DOCKER_IMAGE}:${GIT_COMMIT} ${DOCKER_IMAGE}:latest"
+                    // Using Docker Pipeline plugin (recommended)
+                    def dockerImage = docker.build("${DOCKER_IMAGE}:${GIT_COMMIT}")
+                    dockerImage.tag("latest")
                 }
             }
         }
