@@ -132,9 +132,6 @@ pipeline {
             }
         }
         stage('Build Docker Image'){
-            agent {
-                label 'docker'
-            }
             steps{
                 script {
                     // Using Docker Pipeline plugin (recommended)
