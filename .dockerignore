@@ -1,0 +1,17 @@
+# Add files/directories that should not be included in the Docker image
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+test
+test-results.xml
+coverage
+*.test.js
+.nyc_output
+dependency-check-*
+Jenkinsfile
+README.md
+.vscode
+.DS_Store

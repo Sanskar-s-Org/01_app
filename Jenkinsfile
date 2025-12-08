@@ -130,6 +130,12 @@ pipeline {
                 '''
             }
         }
+        stage('Build Docker Image'){
+            steps{
+                sh 'printenv'
+                sh 'docker build -t immsanskarjoshi/test-repo:$GIT_COMMIT .'
+            }
+        }
     }
 
     post {
