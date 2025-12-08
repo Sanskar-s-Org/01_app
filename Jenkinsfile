@@ -132,22 +132,14 @@ pipeline {
                             if ! command -v trivy &> /dev/null; then
                                 echo "Installing Trivy..."
                                 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
-                                echo "deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
+                                echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
                                 apt-get update
                                 apt-get install -y trivy
                             fi
                             
-                            trivy image {DOCKER_IMAGE}:${GIT_COMMIT} \ 
-                            --severity LOW,MEDIUM \ 
-                            --exit-code 0 \
-                            --quiet \
-                            --format json --o trivy-image-MEDIUM-results.json 
+                            trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --quiet --format json --output trivy-image-MEDIUM-results.json 
 
-                            trivy image {DOCKER_IMAGE}:${GIT_COMMIT} \ 
-                            --severity HIGH,CRITICAL \ 
-                            --exit-code 1 \
-                            --quiet \
-                            --format json --o trivy-image-CRITICAL-results.json 
+                            trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 1 --quiet --format json --output trivy-image-CRITICAL-results.json 
                         '''
                     } catch (Exception e) {
                         echo "Trivy scan failed or Docker image not available. Skipping."
@@ -158,21 +150,13 @@ pipeline {
             post{
                 always{
                     sh '''
-                        trivy convert \ 
-                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
-                        --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json         
+                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json         
 
-                        trivy convert \ 
-                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
-                        --output trivy-image-CRITICAL-results.html trivy-image-MEDIUM-results.json   
+                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json   
 
-                        trivy convert \ 
-                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
-                        --output trivy-image-MEDIUM-results.xml trivy-image-MEDIUM-results.json         
+                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-MEDIUM-results.xml trivy-image-MEDIUM-results.json         
 
-                        trivy convert \ 
-                        --format template --template "@/usr/local/share/trivy/templates/html.tpl" \
-                        --output trivy-image-CRITICAL-results.xml trivy-image-MEDIUM-results.json         
+                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.xml trivy-image-CRITICAL-results.json         
                     '''
                 }
             }
