@@ -4,7 +4,9 @@ pipeline {
     tools {
         nodejs 'nodejs-22-6-0'
     }
-
+    environment{
+        SONAR_SCANNER_HOME = tool 'sonarqube-scanner-6.1.0'
+    }
     stages {
 
         stage('Check Node.js Version') {
