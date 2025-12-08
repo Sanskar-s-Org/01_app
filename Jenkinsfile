@@ -141,6 +141,49 @@ pipeline {
                 }
             }
         }
+
+        stage('Trivy Image Scan'){
+            steps{
+                script {
+                    try {
+                        sh """
+                            # Install Trivy if not already installed
+                            if ! command -v trivy &> /dev/null; then
+                                echo "Installing Trivy..."
+                                wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
+                                echo "deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
+                                apt-get update
+                                apt-get install -y trivy
+                            fi
+                            
+                            trivy image {DOCKER_IMAGE}:${GIT_COMMIT} \ 
+                            --severity LOW,MEDIUM \ 
+                            --exit-code 0 \
+                            --quiet \
+                            --format json --o trivy-image-MEDIUM-results.json 
+
+                            trivy image {DOCKER_IMAGE}:${GIT_COMMIT} \ 
+                            --severity CRITICAL \ 
+                            --exit-code 1 \
+                            --quiet \
+                            --format json --o trivy-image-CRITICAL-results.json 
+                        """
+                        
+                        publishHTML([
+                            allowMissing: true,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: '.',
+                            reportFiles: 'trivy-report.json',
+                            reportName: 'Trivy Security Scan Report'
+                        ])
+                    } catch (Exception e) {
+                        echo "Trivy scan failed or Docker image not available. Skipping."
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
     }
 
     post {
