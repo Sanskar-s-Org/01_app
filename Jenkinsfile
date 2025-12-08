@@ -115,6 +115,18 @@ pipeline {
                 ])
             }
         }
+
+        stage('SAST - SonarQube') {
+            steps {
+                sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=01TestApp \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://3.110.130.196:9000 \
+                    -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
+                '''
+            }
+        }
     }
 
     post {
