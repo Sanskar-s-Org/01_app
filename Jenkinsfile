@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         nodejs 'nodejs-22-6-0'
+        dockerTool 'docker-latest'
     }
     environment{
         SONAR_SCANNER_HOME = tool 'sonarqube-scanner-6.1.0'
