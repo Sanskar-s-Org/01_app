@@ -1,8 +1,14 @@
 {
   "reporter": [
     "text",
-    "html"
+    "html",
+    "lcov",
+    "cobertura",
+    "json-summary"
   ],
   "check-coverage": true,
-  "lines": 70
+  "lines": 70,
+  "statements": 70,
+  "functions": 60,
+  "branches": 70
 }
