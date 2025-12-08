@@ -132,44 +132,56 @@ pipeline {
                             if ! command -v trivy &> /dev/null; then
                                 echo "Trivy not installed. Using Trivy Docker container..."
                                 
-                                # Scan with MEDIUM severity
-                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                                # Scan with MEDIUM severity and output to workspace
+                                docker run --rm \
+                                    -v /var/run/docker.sock:/var/run/docker.sock \
+                                    -v $(pwd):/workspace \
+                                    -w /workspace \
                                     aquasec/trivy:latest image \
                                     --severity LOW,MEDIUM \
                                     --exit-code 0 \
-                                    --quiet \
                                     --format json \
-                                    --output trivy-image-MEDIUM-results.json \
+                                    --output /workspace/trivy-image-MEDIUM-results.json \
                                     ${DOCKER_IMAGE}:${GIT_COMMIT}
                                 
-                                # Scan with CRITICAL severity
-                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                                # Scan with CRITICAL severity and output to workspace
+                                docker run --rm \
+                                    -v /var/run/docker.sock:/var/run/docker.sock \
+                                    -v $(pwd):/workspace \
+                                    -w /workspace \
                                     aquasec/trivy:latest image \
                                     --severity HIGH,CRITICAL \
                                     --exit-code 0 \
-                                    --quiet \
                                     --format json \
-                                    --output trivy-image-CRITICAL-results.json \
+                                    --output /workspace/trivy-image-CRITICAL-results.json \
                                     ${DOCKER_IMAGE}:${GIT_COMMIT}
                                 
-                                # Generate HTML reports
-                                docker run --rm -v $(pwd):/reports \
+                                # Generate HTML report for MEDIUM
+                                docker run --rm \
+                                    -v $(pwd):/workspace \
+                                    -w /workspace \
                                     aquasec/trivy:latest convert \
                                     --format template \
                                     --template "@contrib/html.tpl" \
-                                    --output /reports/trivy-image-MEDIUM-results.html \
-                                    /reports/trivy-image-MEDIUM-results.json
+                                    --output /workspace/trivy-image-MEDIUM-results.html \
+                                    /workspace/trivy-image-MEDIUM-results.json
                                 
-                                docker run --rm -v $(pwd):/reports \
+                                # Generate HTML report for CRITICAL
+                                docker run --rm \
+                                    -v $(pwd):/workspace \
+                                    -w /workspace \
                                     aquasec/trivy:latest convert \
                                     --format template \
                                     --template "@contrib/html.tpl" \
-                                    --output /reports/trivy-image-CRITICAL-results.html \
-                                    /reports/trivy-image-CRITICAL-results.json
+                                    --output /workspace/trivy-image-CRITICAL-results.html \
+                                    /workspace/trivy-image-CRITICAL-results.json
+                                
+                                echo "Trivy scan completed successfully!"
+                                ls -la trivy-image-*.json trivy-image-*.html
                             else
                                 echo "Using installed Trivy..."
-                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --quiet --format json --output trivy-image-MEDIUM-results.json 
-                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 0 --quiet --format json --output trivy-image-CRITICAL-results.json 
+                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --format json --output trivy-image-MEDIUM-results.json 
+                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 0 --format json --output trivy-image-CRITICAL-results.json 
                                 
                                 trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json
                                 trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
