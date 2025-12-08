@@ -128,75 +128,49 @@ pipeline {
                 script {
                     try {
                         sh '''
-                            # Check if Trivy is available, if not use Docker container
-                            if ! command -v trivy &> /dev/null; then
-                                echo "Trivy not installed. Using Trivy Docker container..."
-                                
-                                WORKSPACE_DIR=$(pwd)
-                                echo "Workspace directory: ${WORKSPACE_DIR}"
-                                
-                                # Scan with MEDIUM severity and output to workspace
-                                docker run --rm \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
-                                    -w ${WORKSPACE_DIR} \
-                                    aquasec/trivy:latest image \
-                                    --severity LOW,MEDIUM \
-                                    --exit-code 0 \
-                                    --format json \
-                                    --output ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.json \
-                                    ${DOCKER_IMAGE}:${GIT_COMMIT}
-                                
-                                # Scan with CRITICAL severity and output to workspace
-                                docker run --rm \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
-                                    -w ${WORKSPACE_DIR} \
-                                    aquasec/trivy:latest image \
-                                    --severity HIGH,CRITICAL \
-                                    --exit-code 0 \
-                                    --format json \
-                                    --output ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.json \
-                                    ${DOCKER_IMAGE}:${GIT_COMMIT}
-                                
-                                # Verify JSON files were created
-                                echo "Checking for JSON files..."
-                                ls -lah ${WORKSPACE_DIR}/trivy-image-*.json || echo "JSON files not found!"
-                                
-                                # Generate HTML report for MEDIUM
-                                docker run --rm \
-                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
-                                    -w ${WORKSPACE_DIR} \
-                                    aquasec/trivy:latest convert \
-                                    --format template \
-                                    --template /contrib/html.tpl \
-                                    --output ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.html \
-                                    ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.json
-                                
-                                # Generate HTML report for CRITICAL
-                                docker run --rm \
-                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
-                                    -w ${WORKSPACE_DIR} \
-                                    aquasec/trivy:latest convert \
-                                    --format template \
-                                    --template /contrib/html.tpl \
-                                    --output ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.html \
-                                    ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.json
-                                
-                                echo "Trivy scan completed successfully!"
-                                echo "Verifying generated files:"
-                                ls -lah trivy-image-*.json trivy-image-*.html
-                            else
-                                echo "Using installed Trivy..."
-                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --format json --output trivy-image-MEDIUM-results.json 
-                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 0 --format json --output trivy-image-CRITICAL-results.json 
-                                
-                                trivy convert --format template --template /contrib/html.tpl --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json
-                                trivy convert --format template --template /contrib/html.tpl --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
-                            fi
+                            echo "Running Trivy security scan..."
+                            
+                            # Scan with MEDIUM severity using table format and save to file
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                aquasec/trivy:latest image \
+                                --severity LOW,MEDIUM \
+                                --exit-code 0 \
+                                --format table \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-MEDIUM-results.txt
+                            
+                            # Scan with CRITICAL severity using table format and save to file
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                aquasec/trivy:latest image \
+                                --severity HIGH,CRITICAL \
+                                --exit-code 0 \
+                                --format table \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-CRITICAL-results.txt
+                            
+                            # Generate JSON reports
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                aquasec/trivy:latest image \
+                                --severity LOW,MEDIUM \
+                                --exit-code 0 \
+                                --format json \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-MEDIUM-results.json
+                            
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                aquasec/trivy:latest image \
+                                --severity HIGH,CRITICAL \
+                                --exit-code 0 \
+                                --format json \
+                                ${DOCKER_IMAGE}:${GIT_COMMIT} > trivy-image-CRITICAL-results.json
+                            
+                            echo "Trivy scan completed successfully!"
+                            echo "Generated files:"
+                            ls -lah trivy-image-*.txt trivy-image-*.json
                         '''
                     } catch (Exception e) {
-                        echo "Trivy scan failed or Docker image not available. Skipping."
+                        echo "Trivy scan failed. Skipping."
                         echo "Error: ${e.message}"
                         currentBuild.result = 'UNSTABLE'
                     }
@@ -229,23 +203,8 @@ pipeline {
                 useWrapperFileDirectly: true
             ])
             
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: '.',
-                reportFiles: 'trivy-image-MEDIUM-results.html',
-                reportName: 'Trivy Image Scan - MEDIUM'
-            ])
-            
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: '.',
-                reportFiles: 'trivy-image-CRITICAL-results.html',
-                reportName: 'Trivy Image Scan - CRITICAL'
-            ])
+            // Archive Trivy scan results
+            archiveArtifacts artifacts: 'trivy-image-*.txt, trivy-image-*.json', allowEmptyArchive: true
             
             echo "All reports published successfully!"
         }
