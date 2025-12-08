@@ -184,6 +184,30 @@ pipeline {
             }
 
         }
+        stage('Deploy AWS EC2'){
+            steps{
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'mongoCreds',
+                        usernameVariable: 'MONGODB_USER',
+                        passwordVariable: 'MONGODB_PASS'
+                    )
+                ]){
+                    sshagent(['aws-dev-deploy-ec2-instance']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.0.124.147 "
+                            if sudo docker ps -a | grep -q "sample-app"; then
+                                echo "Container found. Stopping..."
+                                    sudo docker stop "sample-app" && sudo docker rm "sample-app"
+                                echo "Container stopped and removed"
+                            fi
+                            sudo docker run --name sample-app \
+                                -p 3000:3000 -d ${DOCKER_IMAGE}:${GIT_COMMIT}
+                    '''
+                }
+                }
+            }
+        }
     }
 
     post {
