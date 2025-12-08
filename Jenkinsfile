@@ -134,9 +134,10 @@ pipeline {
         stage('Build Docker Image'){
             steps{
                 script {
-                    // Using Docker Pipeline plugin (recommended)
-                    def dockerImage = docker.build("${DOCKER_IMAGE}:${GIT_COMMIT}")
-                    dockerImage.tag("latest")
+                    sh "docker --version"
+                    sh "docker build -t ${DOCKER_IMAGE}:${GIT_COMMIT} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${GIT_COMMIT} ${DOCKER_IMAGE}:latest"
+                    sh "docker images | grep ${DOCKER_IMAGE}"
                 }
             }
         }
