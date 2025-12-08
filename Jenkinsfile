@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     tools {
         nodejs 'nodejs-22-6-0'
     }
@@ -9,21 +8,18 @@ pipeline {
         DOCKER_IMAGE = "immsanskarjoshi/test-repo"
     }
     stages {
-
         stage('Check Node.js Version') {
             steps {
                 sh "node --version"
                 sh "npm --version"
             }
         }
-
         stage('Install Dependencies') {
             steps {
                 // Recommended for CI environments
                 sh "npm ci --no-audit || npm install --no-audit"
             }
         }
-
         stage('Security Checks') {
             parallel {
 
@@ -64,7 +60,6 @@ pipeline {
                 }
             }
         }
-
         stage('Unit Tests') {
             steps {
                 script {
@@ -85,7 +80,6 @@ pipeline {
                 }
             }
         }
-
         stage('Code Coverage') {
             steps {
                 withCredentials([
@@ -99,7 +93,6 @@ pipeline {
                 }
             }
         }
-
         stage('SAST - SonarQube') {
             steps {
                 sh '''
@@ -182,6 +175,14 @@ pipeline {
                     }
                 }
             }
+        }
+        stage('Push to Docker Hub'){
+            steps{
+                withDockerRegistry(credentialsId: 'dockerhub-creds') {
+                    sh 'docker push ${DOCKER_IMAGE}:${GIT_COMMIT}'
+                }
+            }
+
         }
     }
 
