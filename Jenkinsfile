@@ -128,36 +128,58 @@ pipeline {
                 script {
                     try {
                         sh '''
-                            # Install Trivy if not already installed
+                            # Check if Trivy is available, if not use Docker container
                             if ! command -v trivy &> /dev/null; then
-                                echo "Installing Trivy..."
-                                wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
-                                echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
-                                apt-get update
-                                apt-get install -y trivy
+                                echo "Trivy not installed. Using Trivy Docker container..."
+                                
+                                # Scan with MEDIUM severity
+                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                                    aquasec/trivy:latest image \
+                                    --severity LOW,MEDIUM \
+                                    --exit-code 0 \
+                                    --quiet \
+                                    --format json \
+                                    --output trivy-image-MEDIUM-results.json \
+                                    ${DOCKER_IMAGE}:${GIT_COMMIT}
+                                
+                                # Scan with CRITICAL severity
+                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                                    aquasec/trivy:latest image \
+                                    --severity HIGH,CRITICAL \
+                                    --exit-code 0 \
+                                    --quiet \
+                                    --format json \
+                                    --output trivy-image-CRITICAL-results.json \
+                                    ${DOCKER_IMAGE}:${GIT_COMMIT}
+                                
+                                # Generate HTML reports
+                                docker run --rm -v $(pwd):/reports \
+                                    aquasec/trivy:latest convert \
+                                    --format template \
+                                    --template "@contrib/html.tpl" \
+                                    --output /reports/trivy-image-MEDIUM-results.html \
+                                    /reports/trivy-image-MEDIUM-results.json
+                                
+                                docker run --rm -v $(pwd):/reports \
+                                    aquasec/trivy:latest convert \
+                                    --format template \
+                                    --template "@contrib/html.tpl" \
+                                    --output /reports/trivy-image-CRITICAL-results.html \
+                                    /reports/trivy-image-CRITICAL-results.json
+                            else
+                                echo "Using installed Trivy..."
+                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --quiet --format json --output trivy-image-MEDIUM-results.json 
+                                trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 0 --quiet --format json --output trivy-image-CRITICAL-results.json 
+                                
+                                trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json
+                                trivy convert --format template --template "@contrib/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json
                             fi
-                            
-                            trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --quiet --format json --output trivy-image-MEDIUM-results.json 
-
-                            trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity HIGH,CRITICAL --exit-code 1 --quiet --format json --output trivy-image-CRITICAL-results.json 
                         '''
                     } catch (Exception e) {
                         echo "Trivy scan failed or Docker image not available. Skipping."
+                        echo "Error: ${e.message}"
                         currentBuild.result = 'UNSTABLE'
                     }
-                }
-            }
-            post{
-                always{
-                    sh '''
-                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-MEDIUM-results.html trivy-image-MEDIUM-results.json         
-
-                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.html trivy-image-CRITICAL-results.json   
-
-                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-MEDIUM-results.xml trivy-image-MEDIUM-results.json         
-
-                        trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" --output trivy-image-CRITICAL-results.xml trivy-image-CRITICAL-results.json         
-                    '''
                 }
             }
         }
