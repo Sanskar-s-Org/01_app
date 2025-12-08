@@ -1,46 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="Mocha Tests" time="10.253" tests="8" failures="2">
-  <testsuite name="Root Suite" timestamp="2025-11-29T08:57:27" tests="0" time="0.000" failures="0">
+<testsuites name="Mocha Tests" time="10.163" tests="8" failures="2">
+  <testsuite name="Root Suite" timestamp="2025-12-08T12:03:38" tests="0" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="API Integration Tests" timestamp="2025-11-29T08:57:27" tests="0" file="D:\Sanskar\Projects\01_app\test\api.test.js" time="0.000" failures="0">
+  <testsuite name="API Integration Tests" timestamp="2025-12-08T12:03:38" tests="0" file="D:\Sanskar\Learn\Jenkins\01_app\test\api.test.js" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="GET /health" timestamp="2025-11-29T08:57:27" tests="1" file="D:\Sanskar\Projects\01_app\test\api.test.js" time="0.084" failures="0">
-    <testcase name="API Integration Tests GET /health should return 200 OK" time="0.077" classname="should return 200 OK">
-    </testcase>
-  </testsuite>
-  <testsuite name="GET /api/articles" timestamp="2025-11-29T08:57:27" tests="1" file="D:\Sanskar\Projects\01_app\test\api.test.js" time="0.018" failures="0">
-    <testcase name="API Integration Tests GET /api/articles should return a list of articles" time="0.017" classname="should return a list of articles">
+  <testsuite name="GET /health" timestamp="2025-12-08T12:03:38" tests="1" file="D:\Sanskar\Learn\Jenkins\01_app\test\api.test.js" time="0.054" failures="0">
+    <testcase name="API Integration Tests GET /health should return 200 OK" time="0.051" classname="should return 200 OK">
     </testcase>
   </testsuite>
-  <testsuite name="POST /api/users/login" timestamp="2025-11-29T08:57:27" tests="4" file="D:\Sanskar\Projects\01_app\test\api.test.js" time="0.098" failures="0">
-    <testcase name="API Integration Tests POST /api/users/login should login successfully with correct credentials" time="0.053" classname="should login successfully with correct credentials">
-    </testcase>
-    <testcase name="API Integration Tests POST /api/users/login should fail with incorrect credentials" time="0.014" classname="should fail with incorrect credentials">
-    </testcase>
-    <testcase name="API Integration Tests POST /api/users/login should fail with correct email but wrong password" time="0.014" classname="should fail with correct email but wrong password">
-    </testcase>
-    <testcase name="API Integration Tests POST /api/users/login should fail when user object is missing" time="0.012" classname="should fail when user object is missing">
+  <testsuite name="GET /api/articles" timestamp="2025-12-08T12:03:38" tests="1" file="D:\Sanskar\Learn\Jenkins\01_app\test\api.test.js" time="0.013" failures="0">
+    <testcase name="API Integration Tests GET /api/articles should return a list of articles" time="0.012" classname="should return a list of articles">
     </testcase>
   </testsuite>
-  <testsuite name="Error Handling" timestamp="2025-11-29T08:57:27" tests="2" file="D:\Sanskar\Projects\01_app\test\api.test.js" time="0.028" failures="0">
-    <testcase name="API Integration Tests Error Handling should return 404 for non-existent routes" time="0.013" classname="should return 404 for non-existent routes">
+  <testsuite name="POST /api/users/login" timestamp="2025-12-08T12:03:38" tests="4" file="D:\Sanskar\Learn\Jenkins\01_app\test\api.test.js" time="0.065" failures="0">
+    <testcase name="API Integration Tests POST /api/users/login should login successfully with correct credentials" time="0.033" classname="should login successfully with correct credentials">
     </testcase>
-    <testcase name="API Integration Tests Error Handling should handle malformed JSON" time="0.013" classname="should handle malformed JSON">
+    <testcase name="API Integration Tests POST /api/users/login should fail with incorrect credentials" time="0.010" classname="should fail with incorrect credentials">
+    </testcase>
+    <testcase name="API Integration Tests POST /api/users/login should fail with correct email but wrong password" time="0.010" classname="should fail with correct email but wrong password">
+    </testcase>
+    <testcase name="API Integration Tests POST /api/users/login should fail when user object is missing" time="0.008" classname="should fail when user object is missing">
     </testcase>
   </testsuite>
-  <testsuite name="Items API Integration Tests" timestamp="2025-11-29T08:57:27" tests="0" file="D:\Sanskar\Projects\01_app\test\items.test.js" time="10.018" failures="2">
+  <testsuite name="Error Handling" timestamp="2025-12-08T12:03:38" tests="2" file="D:\Sanskar\Learn\Jenkins\01_app\test\api.test.js" time="0.018" failures="0">
+    <testcase name="API Integration Tests Error Handling should return 404 for non-existent routes" time="0.007" classname="should return 404 for non-existent routes">
+    </testcase>
+    <testcase name="API Integration Tests Error Handling should handle malformed JSON" time="0.010" classname="should handle malformed JSON">
+    </testcase>
+  </testsuite>
+  <testsuite name="Items API Integration Tests" timestamp="2025-12-08T12:03:39" tests="0" file="D:\Sanskar\Learn\Jenkins\01_app\test\items.test.js" time="10.009" failures="2">
     <testcase name="Items API Integration Tests &quot;before all&quot; hook in &quot;Items API Integration Tests&quot;" time="0.002" classname="&quot;before all&quot; hook in &quot;Items API Integration Tests&quot;">
       <failure message="The `uri` parameter to `openUri()` must be a string, got &quot;undefined&quot;. Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string." type="MongooseError"><![CDATA[MongooseError: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.
-    at NativeConnection.createClient (node_modules\mongoose\lib\drivers\node-mongodb-native\connection.js:230:11)
+    at NativeConnection.createClient (node_modules\mongoose\lib\drivers\node-mongodb-native\connection.js:237:11)
     at NativeConnection.openUri (node_modules\mongoose\lib\connection.js:1075:34)
-    at Mongoose.connect (node_modules\mongoose\lib\mongoose.js:451:15)
+    at Mongoose.connect (node_modules\mongoose\lib\mongoose.js:450:15)
     at Context.<anonymous> (test\items.test.js:13:28)
-    at processImmediate (node:internal/timers:466:21)]]></failure>
+    at process.processImmediate (node:internal/timers:485:21)]]></failure>
     </testcase>
-    <testcase name="Items API Integration Tests &quot;after all&quot; hook in &quot;Items API Integration Tests&quot;" time="10.011" classname="&quot;after all&quot; hook in &quot;Items API Integration Tests&quot;">
-      <failure message="Timeout of 10000ms exceeded. For async tests and hooks, ensure &quot;done()&quot; is called; if returning a Promise, ensure it resolves. (D:\Sanskar\Projects\01_app\test\items.test.js)" type="Error"><![CDATA[Error: Timeout of 10000ms exceeded. For async tests and hooks, ensure "done()" is called; if returning a Promise, ensure it resolves. (D:\Sanskar\Projects\01_app\test\items.test.js)
-    at listOnTimeout (node:internal/timers:559:17)
-    at processTimers (node:internal/timers:502:7)]]></failure>
+    <testcase name="Items API Integration Tests &quot;after all&quot; hook in &quot;Items API Integration Tests&quot;" time="10.004" classname="&quot;after all&quot; hook in &quot;Items API Integration Tests&quot;">
+      <failure message="Timeout of 10000ms exceeded. For async tests and hooks, ensure &quot;done()&quot; is called; if returning a Promise, ensure it resolves. (D:\Sanskar\Learn\Jenkins\01_app\test\items.test.js)" type="Error"><![CDATA[Error: Timeout of 10000ms exceeded. For async tests and hooks, ensure "done()" is called; if returning a Promise, ensure it resolves. (D:\Sanskar\Learn\Jenkins\01_app\test\items.test.js)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)]]></failure>
     </testcase>
   </testsuite>
 </testsuites>

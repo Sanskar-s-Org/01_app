@@ -114,9 +114,10 @@ describe('API Integration Tests', () => {
                 .post('/api/users/login')
                 .set('Content-Type', 'application/json')
                 .send('{"invalid": }') // Malformed JSON
-                .expect(500) // Caught by error handler
+                .expect(400) // Bad Request for malformed JSON
                 .end((err, res) => {
                     if (err) return done(err);
+                    expect(res.body).to.have.property('error');
                     done();
                 });
         });
