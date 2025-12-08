@@ -40,7 +40,7 @@ pipeline {
                             
                             dependencyCheck(
                                 additionalArguments: '--scan ./ --out ./ --format ALL --prettyPrint --propertyfile dependency-check.properties',
-                                odcInstallation: 'OWASP-DepCheck-9'
+                                odcInstallation: 'OWASP-DepCheck-12'
                             )
 
                             // Clean up the properties file
