@@ -132,52 +132,60 @@ pipeline {
                             if ! command -v trivy &> /dev/null; then
                                 echo "Trivy not installed. Using Trivy Docker container..."
                                 
+                                WORKSPACE_DIR=$(pwd)
+                                echo "Workspace directory: ${WORKSPACE_DIR}"
+                                
                                 # Scan with MEDIUM severity and output to workspace
                                 docker run --rm \
                                     -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v $(pwd):/workspace \
-                                    -w /workspace \
+                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
+                                    -w ${WORKSPACE_DIR} \
                                     aquasec/trivy:latest image \
                                     --severity LOW,MEDIUM \
                                     --exit-code 0 \
                                     --format json \
-                                    --output /workspace/trivy-image-MEDIUM-results.json \
+                                    --output ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.json \
                                     ${DOCKER_IMAGE}:${GIT_COMMIT}
                                 
                                 # Scan with CRITICAL severity and output to workspace
                                 docker run --rm \
                                     -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v $(pwd):/workspace \
-                                    -w /workspace \
+                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
+                                    -w ${WORKSPACE_DIR} \
                                     aquasec/trivy:latest image \
                                     --severity HIGH,CRITICAL \
                                     --exit-code 0 \
                                     --format json \
-                                    --output /workspace/trivy-image-CRITICAL-results.json \
+                                    --output ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.json \
                                     ${DOCKER_IMAGE}:${GIT_COMMIT}
+                                
+                                # Verify JSON files were created
+                                echo "Checking for JSON files..."
+                                ls -lah ${WORKSPACE_DIR}/trivy-image-*.json || echo "JSON files not found!"
                                 
                                 # Generate HTML report for MEDIUM
                                 docker run --rm \
-                                    -v $(pwd):/workspace \
-                                    -w /workspace \
+                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
+                                    -w ${WORKSPACE_DIR} \
                                     aquasec/trivy:latest convert \
                                     --format template \
                                     --template /contrib/html.tpl \
-                                    --output /workspace/trivy-image-MEDIUM-results.html \
-                                    /workspace/trivy-image-MEDIUM-results.json
+                                    --output ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.html \
+                                    ${WORKSPACE_DIR}/trivy-image-MEDIUM-results.json
                                 
                                 # Generate HTML report for CRITICAL
                                 docker run --rm \
-                                    -v $(pwd):/workspace \
-                                    -w /workspace \
+                                    -v ${WORKSPACE_DIR}:${WORKSPACE_DIR} \
+                                    -w ${WORKSPACE_DIR} \
                                     aquasec/trivy:latest convert \
                                     --format template \
                                     --template /contrib/html.tpl \
-                                    --output /workspace/trivy-image-CRITICAL-results.html \
-                                    /workspace/trivy-image-CRITICAL-results.json
+                                    --output ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.html \
+                                    ${WORKSPACE_DIR}/trivy-image-CRITICAL-results.json
                                 
                                 echo "Trivy scan completed successfully!"
-                                ls -la trivy-image-*.json trivy-image-*.html
+                                echo "Verifying generated files:"
+                                ls -lah trivy-image-*.json trivy-image-*.html
                             else
                                 echo "Using installed Trivy..."
                                 trivy image ${DOCKER_IMAGE}:${GIT_COMMIT} --severity LOW,MEDIUM --exit-code 0 --format json --output trivy-image-MEDIUM-results.json 
