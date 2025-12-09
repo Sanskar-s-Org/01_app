@@ -99,7 +99,7 @@ pipeline {
                     $SONAR_SCANNER_HOME/bin/sonar-scanner \
                     -Dsonar.projectKey=01TestApp \
                     -Dsonar.sources=. \
-                    -Dsonar.host.url=http://3.110.130.196:9000 \
+                    -Dsonar.host.url=http://3.110.187.20:9000 \
                     -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
                     -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
                 '''
@@ -197,7 +197,7 @@ pipeline {
                 ]){
                     sshagent(['aws-dev-deploy-ec2-instance']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@65.0.124.147 "
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.2.70.82 "
                             if sudo docker ps -a | grep -q 'sample-app'; then
                                 echo 'Container found. Stopping...'
                                 sudo docker stop sample-app && sudo docker rm sample-app
