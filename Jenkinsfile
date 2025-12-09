@@ -388,6 +388,66 @@ pipeline {
                     }
             }
         }
+        stage('App Deployed?'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                timeout(time: 1, unit: 'DAYS'){
+                    input  message: 'Is the PR Merged and ArgoCD Synced?', ok: 'Yes! PR is Merged and ArgoCD Application is Synced'
+                }
+            }
+        }
+        stage('DAST - OWASP ZAP'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                sh '''
+                    chmod 777 ${pwd}
+                    docker run -v ${pwd}:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy zap-api-scan.py \ 
+                    -t http://kubernetes-ip:30000/api-docs/ \
+                    -f openapi \
+                    -r zap_report.html \
+                    -w zap_report.md \
+                    -J zap_json_report.json \
+                    -x zap_xml_report.xml \
+                    -c zap_ignore_rules
+                '''
+            }
+        }
+        stage('Upload - AWS S3'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                withAWS(credentials: 'aws-creds', region: 'ap-south-1')
+                {
+                    sh '''
+                        ls -ltrah
+                        mkdir reports-$BUILD_ID
+                        cp -rf coverage/ reports-$BUILD_ID/
+                        cp dependency*.* test-results.xml trivy*.* zap*.* reports-$BUILD_ID/
+                        ls -ltra reports-$BUILD_ID/    
+                    '''
+                    s3Upload(
+                        file: "reports-$BUILD_ID",
+                        bucket: '01-app-reports-bucket',
+                        path: "jenkins-$BUILD_ID/"
+                    )
+                }
+            }
+        }
+        stage('Deployed to PROD'){
+            when{
+                branch 'main'
+            }
+            steps{
+                timeout(time: 1, unit: 'DAYS'){
+                    input  message: 'Deploy to Production?', ok: 'Yes! Let us try this on Production', submitter: 'admin'
+                }
+            }
+        }
     }
 
     post {
@@ -433,6 +493,8 @@ pipeline {
                 reportFiles: 'trivy-image-CRITICAL-report.html',
                 reportName: 'Trivy CRITICAL Severity Report'
             ])
+
+            publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './', reportFiles: 'zap_report.html', reportName: 'DAST - OWASP ZAP Report', reportTitles: '', useWrapperFileDirectly: true])
             
             // Archive Trivy JSON results for further processing
             archiveArtifacts artifacts: 'trivy-image-*.json', allowEmptyArchive: true
