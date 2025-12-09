@@ -291,12 +291,19 @@ pipeline {
                     '''
                     
                     echo "Running integration tests against deployed EC2 instance..."
-                    sh '''
-                        # Ensure tools are in PATH
-                        export PATH=$HOME/bin:$PATH
-                        chmod +x integration-testing-ec2.sh
-                        ./integration-testing-ec2.sh
-                    '''
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-credentials',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        sh '''
+                            # Ensure tools are in PATH
+                            export PATH=$HOME/bin:$PATH
+                            chmod +x integration-testing-ec2.sh
+                            ./integration-testing-ec2.sh
+                        '''
+                    }
                 }
             }
         }
