@@ -362,6 +362,32 @@ pipeline {
                 }
             }
         }
+        stage('k8s - Raise PR'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]){
+                         sh """
+                            curl -X POST \
+                            -H "Authorization: token $GIT_PASSWORD" \
+                            -H "Accept: application/vnd.github+json" \
+                            https://api.github.com/repos/Sanskar-s-Org/01-app-gitops-argocd/pulls \
+                            -d '{
+                                "title": "Updated Docker Image",
+                                "body": "Updated docker image in deployment manifest",
+                                "head": "feature-$BUILD_ID",
+                                "base": "main"
+                            }'
+ 
+                        """
+                    }
+            }
+        }
     }
 
     post {
