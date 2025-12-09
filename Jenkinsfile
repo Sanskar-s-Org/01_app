@@ -124,7 +124,6 @@ pipeline {
                 script {
                     sh "docker --version"
                     sh "docker build -t ${DOCKER_IMAGE}:${GIT_COMMIT} ."
-                    sh "docker tag ${DOCKER_IMAGE}:${GIT_COMMIT} ${DOCKER_IMAGE}:latest"
                     sh "docker images | grep ${DOCKER_IMAGE}"
                 }
             }
@@ -194,7 +193,6 @@ pipeline {
             steps{
                 withDockerRegistry(credentialsId: 'dockerhub-creds', url: 'https://index.docker.io/v1/') {
                     sh 'docker push ${DOCKER_IMAGE}:${GIT_COMMIT}'
-                    sh 'docker push ${DOCKER_IMAGE}:latest'
                 }
             }
 
@@ -232,7 +230,7 @@ pipeline {
                 }
             }
         }
-        stage('Integration Testing') {
+        stage('Integration Testing - AWS EC2') {
             when {
                 branch 'feature/*'
             }
@@ -302,6 +300,55 @@ pipeline {
                             export PATH=$HOME/bin:$PATH
                             chmod +x integration-testing-ec2.sh
                             ./integration-testing-ec2.sh
+                        '''
+                    }
+                }
+            }
+        }
+        stage('k8s Update Image Tag'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                script {
+                    echo "Cloning GitOps repository..."
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]) {
+                        sh '''
+                            # Clean up any existing gitops directory
+                            rm -rf gitops-repo
+                            
+                            # Clone the GitOps repository using credentials
+                            git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git gitops-repo
+                            
+                            dir("gitops-repo/kubernetes"){
+                                sh '''
+                                    # Replace Docker Tag
+                                    git checkout main
+                                    git checkout -b feature-$BUILD_ID
+                                    sed -i "s|image: immsanskarjoshi/test-repo:.*|image: ${DOCKER_IMAGE}:${GIT_COMMIT}|g" deployment.yaml
+                                    cat deployment.yaml
+                                '''
+                            }
+                            
+                            # Update the image tag in deployment.yaml
+                            
+                            # Configure git
+                            git config user.email "jenkins@ci.com"
+                            git config user.name "Jenkins CI"
+                            
+                            # Commit and push changes
+                            git add kubernetes/deployment.yaml
+                            git commit -m "Update image tag to ${GIT_COMMIT}" || echo "No changes to commit"
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git feature-$BUILD_ID
+                            
+                            cd ..
+                            rm -rf gitops-repo
+                            
+                            echo "✓ GitOps repository updated with new image tag: ${GIT_COMMIT}"
                         '''
                     }
                 }
