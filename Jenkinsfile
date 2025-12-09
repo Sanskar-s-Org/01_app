@@ -4,12 +4,12 @@ pipeline {
     parameters {
         string(
             name: 'EC2_IP_ADDRESS',
-            defaultValue: '65.2.70.82',
+            defaultValue: '65.0.20.26',
             description: 'EC2 instance IP address for deployment'
         )
         string(
             name: 'SONARQUBE_IP',
-            defaultValue: '3.110.187.20',
+            defaultValue: '3.108.221.158',
             description: 'SonarQube server IP address'
         )
     }
@@ -326,7 +326,6 @@ pipeline {
                             
                             dir("gitops-repo/kubernetes"){
                                 sh '''
-                                    # Replace Docker Tag
                                     git checkout main
                                     git checkout -b feature-$BUILD_ID
                                     sed -i "s|image: immsanskarjoshi/test-repo:.*|image: ${DOCKER_IMAGE}:${GIT_COMMIT}|g" deployment.yaml
