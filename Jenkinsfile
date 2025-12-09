@@ -266,8 +266,9 @@ pipeline {
                             echo "✓ AWS CLI is available"
                         else
                             echo "Installing AWS CLI v2 locally..."
+                            rm -rf aws awscliv2.zip
                             curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                            unzip -q awscliv2.zip
+                            unzip -o -q awscliv2.zip
                             ./aws/install -i $HOME/aws-cli -b $HOME/bin --update
                             rm -rf aws awscliv2.zip
                             echo "✓ AWS CLI installed to $HOME/bin/aws"
