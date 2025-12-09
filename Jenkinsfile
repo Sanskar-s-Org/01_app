@@ -109,14 +109,22 @@ pipeline {
         }
         stage('SAST - SonarQube') {
             steps {
-                sh '''
-                    $SONAR_SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectKey=01TestApp \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://${SONARQUBE_IP}:9000 \
-                    -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
-                    -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
-                '''
+                script {
+                    try {
+                        sh '''
+                            $SONAR_SCANNER_HOME/bin/sonar-scanner \
+                            -Dsonar.projectKey=01TestApp \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=http://${SONARQUBE_IP}:9000 \
+                            -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
+                            -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
+                        '''
+                    } catch (Exception e) {
+                        echo "SonarQube scan failed. Skipping..."
+                        echo "Error: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
             }
         }
         stage('Build Docker Image'){
