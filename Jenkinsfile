@@ -240,45 +240,47 @@ pipeline {
                 script {
                     echo "Installing required tools for integration testing..."
                     sh '''
-                        # Check if running as root or need sudo
-                        if [ "$(id -u)" -eq 0 ]; then
-                            SUDO=""
-                        else
-                            SUDO="sudo"
-                        fi
-                        
-                        # Install curl if not present
+                        # Install curl if not present (already available in Jenkins container)
                         if ! command -v curl &> /dev/null; then
-                            echo "Installing curl..."
-                            $SUDO apt-get update && $SUDO apt-get install -y curl
+                            echo "ERROR: curl not found and cannot be installed without root access"
+                            exit 1
+                        else
+                            echo "✓ curl is available"
                         fi
                         
-                        # Install jq if not present
+                        # Install jq locally if not present
                         if ! command -v jq &> /dev/null; then
-                            echo "Installing jq..."
-                            $SUDO apt-get update && $SUDO apt-get install -y jq
+                            echo "Installing jq locally..."
+                            mkdir -p $HOME/bin
+                            curl -L https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 -o $HOME/bin/jq
+                            chmod +x $HOME/bin/jq
+                            export PATH=$HOME/bin:$PATH
                         fi
                         
-                        # Install AWS CLI v2 if not present
+                        # Install AWS CLI v2 locally if not present
                         if ! command -v aws &> /dev/null; then
-                            echo "Installing AWS CLI v2..."
-                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                            $SUDO apt-get update && $SUDO apt-get install -y unzip
+                            echo "Installing AWS CLI v2 locally..."
+                            curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
                             unzip -q awscliv2.zip
-                            $SUDO ./aws/install
+                            ./aws/install -i $HOME/aws-cli -b $HOME/bin --update
+                            export PATH=$HOME/bin:$PATH
                             rm -rf aws awscliv2.zip
                         fi
                         
                         # Verify installations
                         echo "Tool versions:"
                         curl --version | head -n1
-                        jq --version
-                        aws --version
+                        $HOME/bin/jq --version || jq --version
+                        $HOME/bin/aws --version || aws --version
                     '''
                     
                     echo "Running integration tests against deployed EC2 instance..."
-                    sh 'chmod +x integration-testing-ec2.sh'
-                    sh './integration-testing-ec2.sh'
+                    sh '''
+                        # Ensure tools are in PATH
+                        export PATH=$HOME/bin:$PATH
+                        chmod +x integration-testing-ec2.sh
+                        ./integration-testing-ec2.sh
+                    '''
                 }
             }
         }
