@@ -1,5 +1,19 @@
 pipeline {
     agent any
+    
+    parameters {
+        string(
+            name: 'EC2_IP_ADDRESS',
+            defaultValue: '65.2.70.82',
+            description: 'EC2 instance IP address for deployment'
+        )
+        string(
+            name: 'SONARQUBE_IP',
+            defaultValue: '3.110.187.20',
+            description: 'SonarQube server IP address'
+        )
+    }
+    
     tools {
         nodejs 'nodejs-22-6-0'
     }
@@ -99,7 +113,7 @@ pipeline {
                     $SONAR_SCANNER_HOME/bin/sonar-scanner \
                     -Dsonar.projectKey=01TestApp \
                     -Dsonar.sources=. \
-                    -Dsonar.host.url=http://3.110.187.20:9000 \
+                    -Dsonar.host.url=http://${SONARQUBE_IP}:9000 \
                     -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
                     -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
                 '''
@@ -186,6 +200,9 @@ pipeline {
 
         }
         stage('Deploy AWS EC2'){
+            when {
+                branch 'feature/*'
+            }
             steps{
                 script{
                     withCredentials([
@@ -197,7 +214,7 @@ pipeline {
                 ]){
                     sshagent(['aws-dev-deploy-ec2-instance']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@65.2.70.82 "
+                        ssh -o StrictHostKeyChecking=no ec2-user@${EC2_IP_ADDRESS} "
                             if sudo docker ps -a | grep -q 'sample-app'; then
                                 echo 'Container found. Stopping...'
                                 sudo docker stop sample-app && sudo docker rm sample-app
@@ -212,6 +229,56 @@ pipeline {
                     '''
                 }
                 }
+                }
+            }
+        }
+        stage('Integration Testing') {
+            when {
+                branch 'feature/*'
+            }
+            steps {
+                script {
+                    echo "Installing required tools for integration testing..."
+                    sh '''
+                        # Check if running as root or need sudo
+                        if [ "$(id -u)" -eq 0 ]; then
+                            SUDO=""
+                        else
+                            SUDO="sudo"
+                        fi
+                        
+                        # Install curl if not present
+                        if ! command -v curl &> /dev/null; then
+                            echo "Installing curl..."
+                            $SUDO apt-get update && $SUDO apt-get install -y curl
+                        fi
+                        
+                        # Install jq if not present
+                        if ! command -v jq &> /dev/null; then
+                            echo "Installing jq..."
+                            $SUDO apt-get update && $SUDO apt-get install -y jq
+                        fi
+                        
+                        # Install AWS CLI v2 if not present
+                        if ! command -v aws &> /dev/null; then
+                            echo "Installing AWS CLI v2..."
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            $SUDO apt-get update && $SUDO apt-get install -y unzip
+                            unzip -q awscliv2.zip
+                            $SUDO ./aws/install
+                            rm -rf aws awscliv2.zip
+                        fi
+                        
+                        # Verify installations
+                        echo "Tool versions:"
+                        curl --version | head -n1
+                        jq --version
+                        aws --version
+                    '''
+                    
+                    echo "Running integration tests against deployed EC2 instance..."
+                    sh 'chmod +x integration-testing-ec2.sh'
+                    sh './integration-testing-ec2.sh'
                 }
             }
         }
