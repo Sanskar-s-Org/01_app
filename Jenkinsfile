@@ -324,30 +324,31 @@ pipeline {
                             # Clone the GitOps repository using credentials
                             git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git gitops-repo
                             
-                            dir("gitops-repo/kubernetes"){
-                                sh '''
-                                    git checkout main
-                                    git checkout -b feature-$BUILD_ID
-                                    sed -i "s|image: immsanskarjoshi/test-repo:.*|image: ${DOCKER_IMAGE}:${GIT_COMMIT}|g" deployment.yaml
-                                    cat deployment.yaml
-                                '''
-                            }
+                            cd gitops-repo
+                            
+                            # Checkout main and create feature branch
+                            git checkout main
+                            git checkout -b feature-${BUILD_ID}
                             
                             # Update the image tag in deployment.yaml
+                            cd kubernetes
+                            sed -i "s|image: immsanskarjoshi/test-repo:.*|image: ''' + "${DOCKER_IMAGE}:${GIT_COMMIT}" + '''|g" deployment.yaml
+                            cat deployment.yaml
                             
                             # Configure git
+                            cd ..
                             git config user.email "jenkins@ci.com"
                             git config user.name "Jenkins CI"
                             
                             # Commit and push changes
                             git add kubernetes/deployment.yaml
-                            git commit -m "Update image tag to ${GIT_COMMIT}" || echo "No changes to commit"
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git feature-$BUILD_ID
+                            git commit -m "Update image tag to ''' + "${GIT_COMMIT}" + '''" || echo "No changes to commit"
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git feature-${BUILD_ID}
                             
                             cd ..
                             rm -rf gitops-repo
                             
-                            echo "✓ GitOps repository updated with new image tag: ${GIT_COMMIT}"
+                            echo "✓ GitOps repository updated with new image tag"
                         '''
                     }
                 }
