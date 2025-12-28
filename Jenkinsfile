@@ -398,6 +398,7 @@ pipeline {
                 }
             }
         }
+        /*
         stage('DAST - OWASP ZAP'){
             when{
                 branch 'PR*'
@@ -416,6 +417,7 @@ pipeline {
                 '''
             }
         }
+        */
         stage('Upload - AWS S3'){
             when{
                 branch 'PR*'
