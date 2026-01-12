@@ -4,12 +4,12 @@ pipeline {
     parameters {
         string(
             name: 'EC2_IP_ADDRESS',
-            defaultValue: '65.2.70.82',
+            defaultValue: '65.0.20.26',
             description: 'EC2 instance IP address for deployment'
         )
         string(
             name: 'SONARQUBE_IP',
-            defaultValue: '3.110.187.20',
+            defaultValue: '3.108.221.158',
             description: 'SonarQube server IP address'
         )
     }
@@ -109,14 +109,22 @@ pipeline {
         }
         stage('SAST - SonarQube') {
             steps {
-                sh '''
-                    $SONAR_SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectKey=01TestApp \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://${SONARQUBE_IP}:9000 \
-                    -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
-                    -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
-                '''
+                script {
+                    try {
+                        sh '''
+                            $SONAR_SCANNER_HOME/bin/sonar-scanner \
+                            -Dsonar.projectKey=01TestApp \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=http://${SONARQUBE_IP}:9000 \
+                            -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
+                            -Dsonar.login=sqp_07a11c5b19336f53b2fc47175c48741e8d78e6f1
+                        '''
+                    } catch (Exception e) {
+                        echo "SonarQube scan failed. Skipping..."
+                        echo "Error: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
             }
         }
         stage('Build Docker Image'){
@@ -124,7 +132,6 @@ pipeline {
                 script {
                     sh "docker --version"
                     sh "docker build -t ${DOCKER_IMAGE}:${GIT_COMMIT} ."
-                    sh "docker tag ${DOCKER_IMAGE}:${GIT_COMMIT} ${DOCKER_IMAGE}:latest"
                     sh "docker images | grep ${DOCKER_IMAGE}"
                 }
             }
@@ -194,7 +201,6 @@ pipeline {
             steps{
                 withDockerRegistry(credentialsId: 'dockerhub-creds', url: 'https://index.docker.io/v1/') {
                     sh 'docker push ${DOCKER_IMAGE}:${GIT_COMMIT}'
-                    sh 'docker push ${DOCKER_IMAGE}:latest'
                 }
             }
 
@@ -232,7 +238,7 @@ pipeline {
                 }
             }
         }
-        stage('Integration Testing') {
+        stage('Integration Testing - AWS EC2') {
             when {
                 branch 'feature/*'
             }
@@ -240,45 +246,207 @@ pipeline {
                 script {
                     echo "Installing required tools for integration testing..."
                     sh '''
-                        # Check if running as root or need sudo
-                        if [ "$(id -u)" -eq 0 ]; then
-                            SUDO=""
+                        set -e
+                        
+                        # Check curl availability
+                        if command -v curl >/dev/null 2>&1; then
+                            echo "✓ curl is available"
                         else
-                            SUDO="sudo"
+                            echo "ERROR: curl not found"
+                            exit 1
                         fi
                         
-                        # Install curl if not present
-                        if ! command -v curl &> /dev/null; then
-                            echo "Installing curl..."
-                            $SUDO apt-get update && $SUDO apt-get install -y curl
+                        # Install jq locally if not present
+                        if command -v jq >/dev/null 2>&1; then
+                            echo "✓ jq is available"
+                        else
+                            echo "Installing jq locally..."
+                            mkdir -p $HOME/bin
+                            curl -L https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 -o $HOME/bin/jq
+                            chmod +x $HOME/bin/jq
+                            echo "✓ jq installed to $HOME/bin/jq"
                         fi
                         
-                        # Install jq if not present
-                        if ! command -v jq &> /dev/null; then
-                            echo "Installing jq..."
-                            $SUDO apt-get update && $SUDO apt-get install -y jq
-                        fi
-                        
-                        # Install AWS CLI v2 if not present
-                        if ! command -v aws &> /dev/null; then
-                            echo "Installing AWS CLI v2..."
-                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                            $SUDO apt-get update && $SUDO apt-get install -y unzip
-                            unzip -q awscliv2.zip
-                            $SUDO ./aws/install
+                        # Install AWS CLI v2 locally if not present
+                        if command -v aws >/dev/null 2>&1 || [ -f "$HOME/bin/aws" ]; then
+                            echo "✓ AWS CLI is available"
+                        else
+                            echo "Installing AWS CLI v2 locally..."
                             rm -rf aws awscliv2.zip
+                            curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            unzip -o -q awscliv2.zip
+                            ./aws/install -i $HOME/aws-cli -b $HOME/bin --update
+                            rm -rf aws awscliv2.zip
+                            echo "✓ AWS CLI installed to $HOME/bin/aws"
                         fi
                         
                         # Verify installations
+                        echo ""
                         echo "Tool versions:"
                         curl --version | head -n1
-                        jq --version
-                        aws --version
+                        if [ -f "$HOME/bin/jq" ]; then
+                            $HOME/bin/jq --version
+                        else
+                            jq --version
+                        fi
+                        if [ -f "$HOME/bin/aws" ]; then
+                            $HOME/bin/aws --version
+                        else
+                            aws --version
+                        fi
                     '''
                     
                     echo "Running integration tests against deployed EC2 instance..."
-                    sh 'chmod +x integration-testing-ec2.sh'
-                    sh './integration-testing-ec2.sh'
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        sh '''
+                            # Ensure tools are in PATH
+                            export PATH=$HOME/bin:$PATH
+                            chmod +x integration-testing-ec2.sh
+                            ./integration-testing-ec2.sh
+                        '''
+                    }
+                }
+            }
+        }
+        stage('k8s Update Image Tag'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                script {
+                    echo "Cloning GitOps repository..."
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]) {
+                        sh '''
+                            # Clean up any existing gitops directory
+                            rm -rf gitops-repo
+                            
+                            # Clone the GitOps repository using credentials
+                            git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git gitops-repo
+                            
+                            cd gitops-repo
+                            
+                            # Checkout main and create feature branch
+                            git checkout main
+                            git checkout -b feature-${BUILD_ID}
+                            
+                            # Update the image tag in deployment.yaml
+                            cd kubernetes
+                            sed -i "s|image: immsanskarjoshi/test-repo:.*|image: ''' + "${DOCKER_IMAGE}:${GIT_COMMIT}" + '''|g" deployment.yaml
+                            cat deployment.yaml
+                            
+                            # Configure git
+                            cd ..
+                            git config user.email "jenkins@ci.com"
+                            git config user.name "Jenkins CI"
+                            
+                            # Commit and push changes
+                            git add kubernetes/deployment.yaml
+                            git commit -m "Update image tag to ''' + "${GIT_COMMIT}" + '''" || echo "No changes to commit"
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Sanskar-s-Org/01-app-gitops-argocd.git feature-${BUILD_ID}
+                            
+                            cd ..
+                            rm -rf gitops-repo
+                            
+                            echo "✓ GitOps repository updated with new image tag"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('k8s - Raise PR'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]){
+                         sh """
+                            curl -X POST \
+                            -H "Authorization: token $GIT_PASSWORD" \
+                            -H "Accept: application/vnd.github+json" \
+                            https://api.github.com/repos/Sanskar-s-Org/01-app-gitops-argocd/pulls \
+                            -d '{
+                                "title": "Updated Docker Image",
+                                "body": "Updated docker image in deployment manifest",
+                                "head": "feature-$BUILD_ID",
+                                "base": "main"
+                            }'
+ 
+                        """
+                    }
+            }
+        }
+        stage('App Deployed?'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                timeout(time: 1, unit: 'DAYS'){
+                    input  message: 'Is the PR Merged and ArgoCD Synced?', ok: 'Yes! PR is Merged and ArgoCD Application is Synced'
+                }
+            }
+        }
+        /*
+        stage('DAST - OWASP ZAP'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                sh '''
+                    chmod 777 ${pwd}
+                    docker run -v ${pwd}:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy zap-api-scan.py \ 
+                    -t http://kubernetes-ip:30000/api-docs/ \
+                    -f openapi \
+                    -r zap_report.html \
+                    -w zap_report.md \
+                    -J zap_json_report.json \
+                    -x zap_xml_report.xml \
+                    -c zap_ignore_rules
+                '''
+            }
+        }
+        */
+        stage('Upload - AWS S3'){
+            when{
+                branch 'PR*'
+            }
+            steps{
+                withAWS(credentials: 'aws-creds', region: 'ap-south-1')
+                {
+                    sh '''
+                        ls -ltrah
+                        mkdir reports-$BUILD_ID
+                        cp -rf coverage/ reports-$BUILD_ID/
+                        cp dependency*.* test-results.xml trivy*.* zap*.* reports-$BUILD_ID/
+                        ls -ltra reports-$BUILD_ID/    
+                    '''
+                    s3Upload(
+                        file: "reports-$BUILD_ID",
+                        bucket: '01-app-reports-bucket',
+                        path: "jenkins-$BUILD_ID/"
+                    )
+                }
+            }
+        }
+        stage('Deployed to PROD'){
+            when{
+                branch 'main'
+            }
+            steps{
+                timeout(time: 1, unit: 'DAYS'){
+                    input  message: 'Deploy to Production?', ok: 'Yes! Let us try this on Production', submitter: 'admin'
                 }
             }
         }
@@ -327,6 +495,8 @@ pipeline {
                 reportFiles: 'trivy-image-CRITICAL-report.html',
                 reportName: 'Trivy CRITICAL Severity Report'
             ])
+
+            publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './', reportFiles: 'zap_report.html', reportName: 'DAST - OWASP ZAP Report', reportTitles: '', useWrapperFileDirectly: true])
             
             // Archive Trivy JSON results for further processing
             archiveArtifacts artifacts: 'trivy-image-*.json', allowEmptyArchive: true

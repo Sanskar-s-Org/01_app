@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Ensure local bin directory is in PATH
+export PATH=$HOME/bin:$PATH
+
 echo "Starting Integration Test..."
 
 # Check required tools
